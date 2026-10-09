@@ -1,0 +1,361 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { Course, CourseType } from '@syllabusforge/shared';
+import {
+  FileText,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Filter,
+  PlusCircle,
+  Copy,
+  ExternalLink,
+  Trash2,
+  Eye,
+  Edit3,
+  Award,
+  BookOpen,
+  GraduationCap,
+  Layers,
+  Sparkles,
+} from 'lucide-react';
+
+export const Dashboard: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedType, setSelectedType] = useState<string>('ALL');
+
+  useEffect(() => {
+    loadCourses();
+  }, [user]);
+
+  async function loadCourses() {
+    try {
+      setLoading(true);
+      const data = await api.getCourses();
+      setCourses(data);
+    } catch (err) {
+      console.error('Failed to load courses:', err);
+    } finally {
+      loadCoursesFinished();
+    }
+  }
+
+  function loadCoursesFinished() {
+    setLoading(false);
+  }
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this syllabus draft?')) return;
+    try {
+      await api.deleteCourse(id);
+      loadCourses();
+    } catch (err: any) {
+      alert(`Delete error: ${err.message}`);
+    }
+  };
+
+  const handleRevise = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await api.reviseCourse(id);
+      navigate(`/courses/${res.course._id}`);
+    } catch (err: any) {
+      alert(`Revision error: ${err.message}`);
+    }
+  };
+
+  // Filtered courses
+  const filteredCourses = courses.filter(c => {
+    const matchesSearch =
+      (c.courseName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.courseCode || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus === 'ALL' || c.status === selectedStatus;
+    const matchesType = selectedType === 'ALL' || c.courseType === selectedType;
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  // Summary counts
+  const draftsCount = courses.filter(c => c.status === 'DRAFT').length;
+  const submittedCount = courses.filter(c => c.status === 'SUBMITTED').length;
+  const approvedCount = courses.filter(c => c.status === 'APPROVED' || c.status === 'FINALIZED').length;
+  const returnedCount = courses.filter(c => c.status === 'RETURNED').length;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* TCE Welcome Hero Banner (Styled like TCE Official Portal) */}
+      <div className="bg-gradient-to-r from-[#560B0D] via-[#7B1113] to-[#091A2A] rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border-b-4 border-[#C59B27]">
+        {/* Subtle decorative geometric overlay */}
+        <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-white/5 transform skew-x-12 pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-[#C59B27]/10 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#C59B27] text-slate-900 shadow-sm">
+              <Award className="w-3.5 h-3.5" />
+              <span>Regulation 2026</span>
+            </span>
+            <span className="text-xs text-white/80 font-medium">
+              Thiagarajar College of Engineering • Outcome Based Education (OBE)
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-tce text-white">
+            Curriculum & Syllabi Management Portal
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm text-slate-200 leading-relaxed max-w-2xl">
+            Design and validate curriculum documentation with automated institutional compliance, Thiagarajar Proficiency Scale (TPS 1–6) taxonomy, and direct Academic Council Meeting (ACM) export.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-white/90 pt-2 border-t border-white/10">
+            <div>
+              <span className="text-[#E2BF53] font-semibold">Faculty / User:</span>{' '}
+              <span className="font-bold">{user?.name}</span> ({user?.role})
+            </div>
+            <div>
+              <span className="text-[#E2BF53] font-semibold">Department:</span>{' '}
+              <span>{user?.department || 'General Engineering'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Institutional Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Drafts */}
+        <div
+          onClick={() => setSelectedStatus('DRAFT')}
+          className={`p-5 rounded-xl border-2 transition-all cursor-pointer bg-white relative overflow-hidden ${
+            selectedStatus === 'DRAFT'
+              ? 'border-[#7B1113] bg-[#FAF2F3] shadow-md'
+              : 'border-slate-200 hover:border-[#7B1113]/50 hover:shadow-xs'
+          }`}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#7B1113]" />
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Drafts</span>
+            <Edit3 className="w-4 h-4 text-[#7B1113]" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#7B1113]">{draftsCount}</div>
+          <div className="text-xs text-slate-500 mt-1">In formulation</div>
+        </div>
+
+        {/* Submitted */}
+        <div
+          onClick={() => setSelectedStatus('SUBMITTED')}
+          className={`p-5 rounded-xl border-2 transition-all cursor-pointer bg-white relative overflow-hidden ${
+            selectedStatus === 'SUBMITTED'
+              ? 'border-[#0F2942] bg-[#F0F4F8] shadow-md'
+              : 'border-slate-200 hover:border-[#0F2942]/50 hover:shadow-xs'
+          }`}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-[#0F2942]" />
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Submitted</span>
+            <Clock className="w-4 h-4 text-[#0F2942]" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#0F2942]">{submittedCount}</div>
+          <div className="text-xs text-slate-500 mt-1">Department review</div>
+        </div>
+
+        {/* Needs Revision */}
+        <div
+          onClick={() => setSelectedStatus('RETURNED')}
+          className={`p-5 rounded-xl border-2 transition-all cursor-pointer bg-white relative overflow-hidden ${
+            selectedStatus === 'RETURNED'
+              ? 'border-amber-600 bg-amber-50/60 shadow-md'
+              : 'border-slate-200 hover:border-amber-400 hover:shadow-xs'
+          }`}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-600" />
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Returned</span>
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-amber-700">{returnedCount}</div>
+          <div className="text-xs text-slate-500 mt-1">Remarks to address</div>
+        </div>
+
+        {/* Approved */}
+        <div
+          onClick={() => setSelectedStatus('APPROVED')}
+          className={`p-5 rounded-xl border-2 transition-all cursor-pointer bg-white relative overflow-hidden ${
+            selectedStatus === 'APPROVED'
+              ? 'border-emerald-600 bg-emerald-50/60 shadow-md'
+              : 'border-slate-200 hover:border-emerald-400 hover:shadow-xs'
+          }`}
+        >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-600" />
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">BoS / ACM Approved</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-emerald-700">{approvedCount}</div>
+          <div className="text-xs text-slate-500 mt-1">Ready for publishing</div>
+        </div>
+      </div>
+
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div className="relative w-full sm:w-96">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Search by course code (e.g. 26CACA0) or title..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#7B1113] focus:border-[#7B1113]"
+          />
+        </div>
+
+        <div className="flex items-center space-x-2 w-full sm:w-auto">
+          {/* Status Filter */}
+          <select
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 focus:ring-2 focus:ring-[#7B1113]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="RETURNED">Returned</option>
+            <option value="APPROVED">Approved</option>
+            <option value="FINALIZED">Finalized</option>
+          </select>
+
+          {/* Type Filter */}
+          <select
+            value={selectedType}
+            onChange={e => setSelectedType(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-700 focus:ring-2 focus:ring-[#7B1113]"
+          >
+            <option value="ALL">All Course Types</option>
+            <option value="THEORY">Theory</option>
+            <option value="PRACTICAL">Practical (Lab)</option>
+            <option value="TCP">Theory cum Practical (TCP)</option>
+            <option value="AUDIT">Audit Course</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Courses Grid */}
+      {loading ? (
+        <div className="p-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200">
+          Loading course syllabi...
+        </div>
+      ) : filteredCourses.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-800">No course syllabi found</h3>
+          <p className="text-xs text-slate-500 mt-1">Try adjusting your filters or click "New Syllabus" above.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredCourses.map(c => {
+            // Type badge color
+            const typeBorder =
+              c.courseType === 'THEORY'
+                ? 'border-t-[#7B1113]'
+                : c.courseType === 'PRACTICAL'
+                ? 'border-t-[#0F2942]'
+                : c.courseType === 'TCP'
+                ? 'border-t-[#C59B27]'
+                : 'border-t-amber-600';
+
+            const typeBadgeBg =
+              c.courseType === 'THEORY'
+                ? 'bg-[#7B1113]/10 text-[#7B1113]'
+                : c.courseType === 'PRACTICAL'
+                ? 'bg-[#0F2942]/10 text-[#0F2942]'
+                : c.courseType === 'TCP'
+                ? 'bg-[#C59B27]/15 text-[#9C7A1D]'
+                : 'bg-amber-100 text-amber-800';
+
+            return (
+              <div
+                key={c._id}
+                onClick={() => navigate(`/courses/${c._id}`)}
+                className={`bg-white rounded-xl border border-slate-200 border-t-4 ${typeBorder} p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between group`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="font-mono text-xs font-black px-2.5 py-1 rounded bg-[#FAF7F2] text-[#7B1113] border border-[#7B1113]/20">
+                      {c.courseCode}
+                    </span>
+                    <span
+                      className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${
+                        c.status === 'APPROVED' || c.status === 'FINALIZED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : c.status === 'SUBMITTED'
+                          ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                          : c.status === 'RETURNED'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 text-sm leading-snug group-hover:text-[#7B1113] transition-colors mt-2">
+                    {c.courseName || 'Untitled Course'}
+                  </h3>
+
+                  <div className="flex items-center space-x-2 text-[11px] font-semibold text-slate-500 mt-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${typeBadgeBg}`}>
+                      {c.courseType}
+                    </span>
+                    <span>•</span>
+                    <span className="text-slate-600">{c.categoryAbbr || 'PCC'}</span>
+                    <span>•</span>
+                    <span className="text-slate-700 font-bold">
+                      {c.credits} Credits (L-T-P: {c.L}-{c.T}-{c.P})
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 mt-3 line-clamp-2 leading-relaxed">
+                    {c.preamble || 'No preamble defined yet.'}
+                  </p>
+                </div>
+
+                {/* Card Footer Actions */}
+                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-semibold text-slate-600">Semester {c.semester}</span>
+                  <div className="flex items-center space-x-1">
+                    {(c.status === 'APPROVED' || c.status === 'FINALIZED') && (
+                      <button
+                        onClick={e => handleRevise(c._id!, e)}
+                        title="Clone as new revision"
+                        className="p-1 text-slate-400 hover:text-[#7B1113] rounded transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {c.status === 'DRAFT' && (
+                      <button
+                        onClick={e => handleDelete(c._id!, e)}
+                        title="Delete draft"
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

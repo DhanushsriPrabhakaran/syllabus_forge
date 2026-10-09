@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.document-view {
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.25;
+  color: #111827;
+}
+
+.document-view table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.document-view th,
+.document-view td {
+  border: 1px solid #4b5563;
+  padding: 6px 10px;
+  vertical-align: top;
+  font-size: 10pt;
+}
+
+.document-view th {
+  background-color: #f3f4f6;
+  font-weight: bold;
+}

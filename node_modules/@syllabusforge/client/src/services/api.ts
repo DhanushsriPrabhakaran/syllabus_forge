@@ -1,0 +1,113 @@
+import { Course, CourseValidationReport, User } from '@syllabusforge/shared';
+
+const envUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+const API_BASE = envUrl
+  ? (envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/$/, '')}/api`)
+  : '/api';
+
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem('syllabusforge_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getAuthHeader(),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorMsg = `Request failed: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMsg = errorData.error || errorData.message || errorMsg;
+    } catch (_) {}
+    throw new Error(errorMsg);
+  }
+
+  return response.json();
+}
+
+export const api = {
+  // Auth
+  login: (data: { email: string; password: string }) =>
+    request<{ token: string; user: User }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  register: (data: any) =>
+    request<{ token: string; user: User }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getMe: () => request<{ user: User }>('/auth/me'),
+  getUsers: () => request<User[]>('/auth/users'),
+
+  // Courses
+  getCourses: (params?: Record<string, string | number>) => {
+    const query = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return request<Course[]>(`/courses${query}`);
+  },
+  getCourse: (id: string) => request<Course>(`/courses/${id}`),
+  createCourse: (data: Partial<Course>) =>
+    request<Course>('/courses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCourse: (id: string, data: Partial<Course>) =>
+    request<Course>(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteCourse: (id: string) =>
+    request<{ message: string }>(`/courses/${id}`, {
+      method: 'DELETE',
+    }),
+  validateCourse: (id: string) =>
+    request<CourseValidationReport>(`/courses/${id}/validate`, {
+      method: 'POST',
+    }),
+  submitCourse: (id: string) =>
+    request<{ message: string; course: Course; report: CourseValidationReport }>(`/courses/${id}/submit`, {
+      method: 'POST',
+    }),
+  reviewCourse: (id: string, data: { action: 'APPROVE' | 'RETURN'; remarks?: string; section?: string }) =>
+    request<{ message: string; course: Course }>(`/courses/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  reviseCourse: (id: string) =>
+    request<{ message: string; course: Course }>(`/courses/${id}/revise`, {
+      method: 'POST',
+    }),
+  getExportUrl: (id: string, format: 'docx' | 'pdf' = 'docx') =>
+    `/api/courses/${id}/export?format=${format}`,
+
+  // Master Data
+  getMaster: <T = any>(collection: string) => request<T[]>(`/master/${collection}`),
+  createMaster: (collection: string, data: any) =>
+    request(`/master/${collection}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateMaster: (collection: string, id: string, data: any) =>
+    request(`/master/${collection}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteMaster: (collection: string, id: string) =>
+    request(`/master/${collection}/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Programmes
+  getProgrammes: () => request<any[]>('/programmes'),
+  getReadinessReport: (code: string) => request<any>(`/programmes/${code}/readiness`),
+  bundleProgrammeUrl: (code: string) => `/api/programmes/${code}/bundle`,
+};
